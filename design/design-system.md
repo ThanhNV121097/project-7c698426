@@ -145,6 +145,7 @@ One subsection per reusable component. This product has no reusable interactive 
 | `html, body` | `height: 100%` plus `body`/`main` `min-height: 100vh` duplicates full-viewport sizing | Approved mockup uses both to guarantee full-screen centering | None |
 | Typography | `font-size: clamp(2rem, 8vw, 6rem)` not part of fixed scale | Approved mockup uses fluid display sizing for the only text | None |
 | Z-index scale | All layers set to `0` because no layered UI exists | Single-screen product has no overlays or sticky surfaces | None |
+| `--viewport-height` | Full-height helper token in `globals.css` | Used by page shell for viewport centering | None |
 
 ## 5. Change log
 
