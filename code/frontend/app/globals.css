@@ -5,6 +5,7 @@
 :root {
   --color-bg: #FFFFFF;
   --color-text: #000000;
+  --viewport-height: 100vh;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
