@@ -1,57 +1,84 @@
 # Test Cases — Show Hello Word page
 
-Risk level: low. Single public read-only page; main risk is contract mismatch between stored greeting, API, and render.
+Risk level: low. Single public read-only page, but contract and failure states matter because pipeline proof depends on exact render and API shape.
 
-## Scenario: Home page shows stored greeting text
-**Given** greeting row exists in PostgreSQL with text `Hello Word`
+## Automated coverage
+
+**Scenario**: AC-1 stored greeting shows on home page
+**Given** PostgreSQL has greeting row with text `Hello Word`, and backend API returns that stored value
 **When** guest opens home page
-**Then** page shows visible text `Hello Word`
-Check: render_url
+**Then** page shows exact text `Hello Word`
+**Check**: render_url
+**Traces to**: HOME-001 AC-1
 
-## Scenario: Home page renders centered on plain white background
+**Scenario**: AC-2 text is centered on white background
 **Given** backend API returns stored greeting
 **When** guest opens home page
-**Then** browser displays text centered horizontally and vertically on plain white background
-Check: manual
+**Then** page displays greeting centered horizontally and vertically on plain white background
+**Check**: render_url
+**Traces to**: HOME-001 AC-2
 
-## Scenario: Home page renders black text with no animation
-**Given** page is rendered from backend greeting
+**Scenario**: AC-3 text is black and no animation shown
+**Given** page is rendered and backend API returns stored greeting
 **When** guest opens home page
-**Then** browser displays black text and no animation is shown
-Check: manual
+**Then** visible greeting text is black and no animation appears
+**Check**: manual
+**Traces to**: HOME-001 AC-3
 
-## Scenario: Home page stays public with no sign-in
+**Scenario**: Missing greeting row shows error state, not blank page
+**Given** greeting row is missing in PostgreSQL and backend API returns `404 Not Found` with error code `not_found`
+**When** guest opens home page
+**Then** page shows error state and no greeting text from stale data or blank screen
+**Check**: render_url
+**Traces to**: HOME-001 failure behavior: Not found / Upstream failure
+
+**Scenario**: Public page stays accessible without sign-in
 **Given** guest is not signed in
 **When** guest opens home page
-**Then** page loads without sign-in prompt and still shows stored greeting text
-Check: render_url
+**Then** page renders normally and does not show sign-in UI
+**Check**: render_url
+**Traces to**: HOME-001 failure behavior: Not permitted
 
-## Scenario: Backend returns stored greeting on GET /v1/greeting
-**Given** greeting row exists in PostgreSQL with text `Hello Word`
-**When** client sends `GET /v1/greeting`
-**Then** response is `200 OK` with body `{"text":"Hello Word"}` and no extra fields
-Check: fetch_url
-
-## Scenario: Missing greeting row returns not_found envelope
-**Given** greeting row is missing from PostgreSQL
-**When** client sends `GET /v1/greeting`
-**Then** response is `404 Not Found` with body `{"error":{"code":"not_found","message":"Greeting not found"}}`
-Check: fetch_url
-
-## Scenario: Backend/database failure returns internal_error envelope
-**Given** backend API cannot read greeting because PostgreSQL is unavailable or query fails
-**When** client sends `GET /v1/greeting`
-**Then** response is `500 Internal Server Error` with body `{"error":{"code":"internal_error","message":"Unable to load greeting"}}`
-Check: fetch_url
-
-## Scenario: Unsupported method returns method_not_allowed envelope
-**Given** endpoint `/v1/greeting` is available
-**When** client sends unsupported method to `/v1/greeting`
-**Then** response is `405 Method Not Allowed` with body `{"error":{"code":"method_not_allowed","message":"Method not allowed"}}`
-Check: fetch_url
-
-## Scenario: Frontend has no fallback greeting text
-**Given** API is unavailable or returns error
+**Scenario**: Stored greeting value renders unchanged
+**Given** PostgreSQL greeting row text is exact `Hello Word` and backend API returns that value
 **When** guest opens home page
-**Then** page does not show alternate hardcoded greeting text
-Check: manual
+**Then** page shows `Hello Word` with no trimming or replacement
+**Check**: fetch_url
+**Traces to**: HOME-001 failure behavior: Boundary
+
+## Backend contract coverage
+
+**Scenario**: GET /v1/greeting success shape
+**Given** greeting row exists in PostgreSQL
+**When** client calls `GET /v1/greeting`
+**Then** response is `200 OK` with JSON body `{ "text": "Hello Word" }`
+**Check**: fetch_url
+**Traces to**: services.md /v1/greeting success response
+
+**Scenario**: GET /v1/greeting missing row error envelope
+**Given** greeting row is missing
+**When** client calls `GET /v1/greeting`
+**Then** response is `404 Not Found` with JSON body `{ "error": { "code": "not_found", "message": "Greeting not found" } }`
+**Check**: fetch_url
+**Traces to**: services.md /v1/greeting 404
+
+**Scenario**: GET /v1/greeting upstream failure envelope
+**Given** PostgreSQL or backend lookup fails
+**When** client calls `GET /v1/greeting`
+**Then** response is `500 Internal Server Error` with JSON body `{ "error": { "code": "internal_error", "message": "Unable to load greeting" } }`
+**Check**: fetch_url
+**Traces to**: services.md /v1/greeting 500
+
+**Scenario**: GET /v1/greeting rejects unsupported method
+**Given** endpoint exists
+**When** client sends unsupported method to `/v1/greeting`
+**Then** response is `405 Method Not Allowed` with JSON body `{ "error": { "code": "method_not_allowed", "message": "Method not allowed" } }`
+**Check**: fetch_url
+**Traces to**: services.md /v1/greeting 405
+
+**Scenario**: Frontend uses configured API URL only
+**Given** `NEXT_PUBLIC_API_URL` is set
+**When** home page loads
+**Then** frontend calls `${NEXT_PUBLIC_API_URL}/v1/greeting` and uses returned text, with no hardcoded fallback greeting
+**Check**: manual
+**Traces to**: services.md Frontend integration
