@@ -63,6 +63,8 @@ Failure response: `503 Service Unavailable`
 
 Returns stored greeting for home page.
 
+Auth: none.
+
 Request body: none.
 
 Success response: `200 OK`
@@ -73,7 +75,9 @@ Success response: `200 OK`
 }
 ```
 
-Failure responses:
+Frontend API adapter may map this success response into reviewed UI mock union `{ "status": "ok", "text": "Hello Word" }`. Backend does not include `status` on success because service convention returns resource JSON directly.
+
+Failure responses use shared error envelope. Frontend API adapter may map these into reviewed UI mock union `{ "status": "error", "error": { ... } }`.
 
 `404 Not Found`
 
@@ -111,3 +115,29 @@ Failure responses:
 ## Frontend integration
 
 Frontend reads `NEXT_PUBLIC_API_URL` and calls `${NEXT_PUBLIC_API_URL}/v1/greeting`. No fallback greeting text is allowed in frontend because SRS requires database-backed text.
+
+Reviewed mock module: `code/frontend/lib/mock/show-hello-word-page.ts` on `feature/show-hello-word-page-ui`.
+
+Mock contract alignment:
+
+- Mock success: `{ status: "ok", text: string }`.
+- API success: `{ text: string }`.
+- Difference is intentional: `status` is a frontend adapter discriminant, not service payload, and existing service convention returns resource JSON directly.
+- Mock error codes `not_found` and `internal_error` match API error codes.
+- Mock `loading` code is client-only and has no backend status.
+- Mock `empty` state maps to API `404 not_found`.
+
+## Story extension: Show Hello Word page
+
+No new endpoints are needed beyond `GET /v1/greeting` and `GET /healthz` defined above.
+
+`GET /v1/greeting` satisfies HOME-001:
+
+- Reads fixed row `greetings.id = 1`.
+- Returns stored `text` unchanged.
+- Requires no auth.
+- Returns `not_found` when row is missing.
+- Returns `internal_error` when PostgreSQL read fails.
+- Returns `method_not_allowed` for unsupported methods on the same path.
+
+No pagination applies because endpoint returns one resource.
