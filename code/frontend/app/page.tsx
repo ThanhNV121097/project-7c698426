@@ -1,3 +1,5 @@
+import HelloWordDisplay from "../components/HelloWordDisplay";
+
 export default function Home() {
-  return <main aria-label="Hello Word display" className="page-shell" />;
+  return <HelloWordDisplay />;
 }
